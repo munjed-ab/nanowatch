@@ -1,0 +1,307 @@
+Metadata-Version: 2.4
+Name: nanowatch
+Version: 0.1.0
+Summary: High-precision Python performance measurement toolkit
+License: MIT
+Keywords: performance,profiling,timing,benchmark,measurement
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Profilers
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-asyncio; extra == "dev"
+
+# nanowatch
+
+High-precision Python performance measurement toolkit.
+Nanosecond accuracy. Zero dependencies. Minimal output.
+
+---
+
+## Install
+
+```
+pip install nanowatch
+```
+
+Or from source:
+
+```
+pip install -e .
+```
+
+---
+
+## Interfaces
+
+### 1. Function Decorator
+
+```python
+from nanowatch import watch
+
+@watch
+def compute(n):
+    return sum(range(n))
+
+# With a custom label
+@watch("heavy computation")
+def compute(n):
+    return sum(range(n))
+
+# Async functions work identically
+@watch
+async def fetch_data(url):
+    ...
+```
+
+**Output:**
+```
+  compute                                       1.243 ms
+```
+
+---
+
+### 2. Code Block Context Manager
+
+```python
+from nanowatch import watch_block
+
+with watch_block("db query"):
+    results = db.execute(sql)
+```
+
+---
+
+### 3. Inline Call (no decorator needed)
+
+```python
+from nanowatch import watch_call
+
+data = watch_call(json.loads, raw_string, name="parse response")
+```
+
+---
+
+### 4. Class Mixin (auto-instruments all public methods)
+
+```python
+from nanowatch import WatchedMixin
+
+class UserService(WatchedMixin):
+    _watch_prefix = "UserService"   # optional, defaults to class name
+
+    def fetch_user(self, user_id):
+        ...
+
+    def save_user(self, user):
+        ...
+
+    def _internal_helper(self):     # skipped (underscore prefix)
+        ...
+```
+
+Every call to `fetch_user` or `save_user` is automatically timed.
+
+**Custom collector via DI:**
+```python
+from nanowatch import WatchedMixin, Collector
+
+my_collector = Collector()
+
+class OrderService(WatchedMixin):
+    _watch_collector = my_collector
+    _watch_prefix = "OrderService"
+
+    def create_order(self, data):
+        ...
+```
+
+---
+
+### 5. WSGI Middleware (Flask, Django, etc.)
+
+```python
+from nanowatch import WsgiMiddleware
+
+# Flask
+app.wsgi_app = WsgiMiddleware(app.wsgi_app)
+
+# Django (in wsgi.py)
+application = WsgiMiddleware(get_wsgi_application())
+```
+
+**Output per request:**
+```
+  HTTP GET /api/users                           4.231 ms  [method=GET, path=/api/users]
+```
+
+---
+
+### 6. ASGI Middleware (FastAPI, Starlette, etc.)
+
+```python
+from nanowatch import AsgiMiddleware
+
+# FastAPI
+app.add_middleware(AsgiMiddleware)
+
+# Or manually wrap
+app = AsgiMiddleware(app)
+```
+
+---
+
+### 7. Line Profiler (checkpoint-based)
+
+Measures time between named points inside a function.
+
+```python
+from nanowatch import LineProfiler
+
+def process_order(order):
+    prof = LineProfiler("process_order")
+
+    validate(order)
+    prof.mark("validated")
+
+    result = db.save(order)
+    prof.mark("saved to db")
+
+    notify(order)
+    prof.mark("notified")
+
+    prof.finish()
+```
+
+**Output:**
+```
+  process_order | validated                      312 us  [session=process_order, checkpoint=validated]
+  process_order | saved to db                  2.841 ms  [session=process_order, checkpoint=saved to db]
+  process_order | notified                     1.102 ms  [session=process_order, checkpoint=notified]
+  [nanowatch] session 'process_order' complete (3 checkpoints)
+  ------------------------------------------------------------------------
+```
+
+---
+
+## Reports
+
+### Print summary to stdout
+
+```python
+import nanowatch
+
+# ... run your code ...
+
+nanowatch.summary()
+```
+
+**Output:**
+```
+========================================================================
+  nanowatch | Performance Summary
+  2025-06-01 14:32:10
+========================================================================
+  UserService.fetch_user
+    calls : 48
+    min   : 812 us
+    max   : 4.231 ms
+    avg   : 1.103 ms
+    total : 52.944 ms
+------------------------------------------------------------------------
+  HTTP GET /api/users                          4.231 ms  [method=GET, path=/api/users]
+------------------------------------------------------------------------
+  Total tracked time : 1.204 s
+  Total measurements : 57
+========================================================================
+```
+
+### Save to JSON file
+
+```python
+nanowatch.save("perf_results.json")
+```
+
+```json
+{
+  "generated_at": "2025-06-01T14:32:10.123456",
+  "total_measurements": 57,
+  "records": [
+    {
+      "name": "UserService.fetch_user",
+      "duration_ns": 1103000,
+      "duration_us": 1103.0,
+      "duration_ms": 1.103,
+      "duration_s": 0.001103,
+      "context": {}
+    }
+  ],
+  "groups": {
+    "UserService.fetch_user": {
+      "count": 48,
+      "min_ns": 812000,
+      "max_ns": 4231000,
+      "avg_ns": 1103000,
+      "total_ns": 52944000
+    }
+  }
+}
+```
+
+---
+
+## Custom Collector (Isolation / Testing)
+
+All interfaces accept an optional `collector` parameter for DI:
+
+```python
+from nanowatch import watch, Collector
+
+test_collector = Collector()
+
+@watch(collector=test_collector)
+def my_fn():
+    ...
+
+my_fn()
+print(test_collector.stats("my_fn"))
+```
+
+---
+
+## Reset
+
+```python
+nanowatch.reset()   # clears the global collector
+```
+
+---
+
+## Precision
+
+All measurements use `time.perf_counter_ns`, Python's highest-resolution
+monotonic clock. Results are stored as raw integers (nanoseconds) and
+converted only for display.
+
+---
+
+## Project Structure
+
+```
+src/nanowatch/
+  core/
+    timer.py          # Timer, TimingRecord
+    collector.py      # Collector, default_collector
+  interfaces/
+    decorators.py     # @watch, watch_block, watch_call
+    mixin.py          # WatchedMixin
+    middleware.py     # WsgiMiddleware, AsgiMiddleware
+    line_profiler.py  # LineProfiler
+  output/
+    formatter.py      # console + file output
+```
