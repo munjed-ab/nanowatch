@@ -18,3 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Rebranded from "perfwatch" to "nanowatch" to avoid PyPI name collision.
+
+
+## [0.1.2] - 2026-02-22
+
+### Added
+- Minimalist output renderer for timing results.
+- Handles both console output and file persistence.
+- All formatting decisions are centralized now.
+- Color output uses ANSI codes via colorama for Windows compatibility.
+- Console width is detected dynamically from the terminal.
