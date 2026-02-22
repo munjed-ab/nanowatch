@@ -3,6 +3,9 @@
 High-precision Python performance measurement toolkit.
 Nanosecond accuracy. Zero dependencies. Minimal output.
 
+![Tests](https://github.com/munjed-ab/nanowatch/actions/workflows/tests.yml/badge.svg)
+![Publish](https://github.com/munjed-ab/nanowatch/actions/workflows/publish.yml/badge.svg)
+
 ---
 
 ## Install
