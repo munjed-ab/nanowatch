@@ -8,3 +8,7 @@ __pycache__
 .agent
 TASKS.md
 STATUS.md
+dist/
+build/
+src/nanowatch.egg-info/
+.pypirc
