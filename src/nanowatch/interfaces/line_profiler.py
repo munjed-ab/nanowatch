@@ -15,12 +15,12 @@ Usage:
     prof.finish()
 """
 
-from typing import Optional
 import time
+from typing import Optional
 
 from ..core.collector import Collector, default_collector
 from ..core.timer import TimingRecord
-from ..output.formatter import print_record, SEPARATOR
+from ..output.formatter import print_record, _separator
 
 
 class LineProfiler:
@@ -77,4 +77,4 @@ class LineProfiler:
         """
         print(f"  [nanowatch] session '{self._session}' complete "
               f"({len(self._marks)} checkpoints)")
-        print(SEPARATOR)
+        print(_separator("-"))

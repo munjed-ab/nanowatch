@@ -28,3 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All formatting decisions are centralized now.
 - Color output uses ANSI codes via colorama for Windows compatibility.
 - Console width is detected dynamically from the terminal.
+
+
+## [0.1.3] - 2026-02-22
+
+### Changed
+- Fixed `LineProfiler` to use `_separator` instead of `SEPARATOR`.
